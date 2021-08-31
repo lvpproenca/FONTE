@@ -1,0 +1,91 @@
+CREATE DATABASE `vendas` /*!40100 DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci */ /*!80016 DEFAULT ENCRYPTION='N' */;
+
+CREATE TABLE `clientes` (
+  `codigo` int NOT NULL AUTO_INCREMENT,
+  `nome` varchar(150) DEFAULT NULL,
+  `cidade` varchar(150) DEFAULT NULL,
+  `uf` varchar(2) DEFAULT NULL,
+  PRIMARY KEY (`codigo`),
+  UNIQUE KEY `codigo_UNIQUE` (`codigo`) /*!80000 INVISIBLE */,
+  KEY `NOME` (`nome`),
+  KEY `CODIGO` (`codigo`),
+  KEY `CIDADE` (`cidade`)
+) ENGINE=InnoDB AUTO_INCREMENT=10 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+CREATE TABLE `pedidos` (
+  `numeropedido` int NOT NULL,
+  `dataemissao` datetime DEFAULT NULL,
+  `codcli` int DEFAULT NULL,
+  `valortotal` decimal(10,2) DEFAULT NULL,
+  PRIMARY KEY (`numeropedido`),
+  UNIQUE KEY `numeropedido_UNIQUE` (`numeropedido`) /*!80000 INVISIBLE */,
+  KEY `CLIENTE_idx` (`codcli`),
+  KEY `NUMEROPEDIDO` (`numeropedido`),
+  CONSTRAINT `CLIENTE` FOREIGN KEY (`codcli`) REFERENCES `clientes` (`codigo`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+CREATE TABLE `pedidosprodutos` (
+  `codigo` int NOT NULL AUTO_INCREMENT,
+  `pedido` int DEFAULT NULL,
+  `codprod` varchar(6) DEFAULT NULL,
+  `qtd` int DEFAULT NULL,
+  `valor` decimal(10,2) DEFAULT NULL,
+  `valortotal` decimal(10,2) DEFAULT NULL,
+  PRIMARY KEY (`codigo`),
+  UNIQUE KEY `codigo_UNIQUE` (`codigo`),
+  KEY `PRODUTO_idx` (`codprod`),
+  CONSTRAINT `PRODUTO` FOREIGN KEY (`codprod`) REFERENCES `produtos` (`codigo`)
+) ENGINE=InnoDB AUTO_INCREMENT=67 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+CREATE TABLE `produtos` (
+  `codigo` varchar(6) NOT NULL,
+  `descricao` varchar(255) DEFAULT NULL,
+  `precovenda` decimal(10,2) DEFAULT NULL,
+  PRIMARY KEY (`codigo`),
+  UNIQUE KEY `codigo_UNIQUE` (`codigo`),
+  KEY `CODIGO` (`codigo`),
+  KEY `DESCRICAO` (`descricao`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+insert into clientes (NOME, CIDADE, UF) VALUES ('LEONARDO', 'VOTORANTIM', 'SP')
+insert into clientes (NOME, CIDADE, UF) VALUES ('REGINA', 'VOTORANTIM', 'SP')
+insert into clientes (NOME, CIDADE, UF) VALUES ('GERSON', 'VOTORANTIM', 'SP')
+insert into clientes (NOME, CIDADE, UF) VALUES ('RICARDO', 'VOTORANTIM', 'SP')
+insert into clientes (NOME, CIDADE, UF) VALUES ('CRIS', 'VOTORANTIM', 'SP')
+insert into clientes (NOME, CIDADE, UF) VALUES ('VINI', 'VOTORANTIM', 'SP')
+insert into clientes (NOME, CIDADE, UF) VALUES ('JOSE', 'VOTORANTIM', 'SP')
+insert into clientes (NOME, CIDADE, UF) VALUES ('MARIA', 'VOTORANTIM', 'SP')
+insert into clientes (NOME, CIDADE, UF) VALUES ('VANESSA', 'VOTORANTIM', 'SP')
+insert into clientes (NOME, CIDADE, UF) VALUES ('JOANA', 'VOTORANTIM', 'SP')
+insert into clientes (NOME, CIDADE, UF) VALUES ('ANDRESSA', 'VOTORANTIM', 'SP')
+insert into clientes (NOME, CIDADE, UF) VALUES ('PELAGEA', 'VOTORANTIM', 'SP')
+insert into clientes (NOME, CIDADE, UF) VALUES ('MIRIS', 'VOTORANTIM', 'SP')
+insert into clientes (NOME, CIDADE, UF) VALUES ('CLEIDE', 'VOTORANTIM', 'SP')
+insert into clientes (NOME, CIDADE, UF) VALUES ('MARCOS', 'VOTORANTIM', 'SP')
+insert into clientes (NOME, CIDADE, UF) VALUES ('MARIO', 'VOTORANTIM', 'SP')
+insert into clientes (NOME, CIDADE, UF) VALUES ('NARIO', 'VOTORANTIM', 'SP')
+insert into clientes (NOME, CIDADE, UF) VALUES ('BRUNO', 'VOTORANTIM', 'SP')
+insert into clientes (NOME, CIDADE, UF) VALUES ('MANOEL', 'VOTORANTIM', 'SP')
+insert into clientes (NOME, CIDADE, UF) VALUES ('EDUARDO', 'VOTORANTIM', 'SP')
+
+insert into produtos (codigo, descricao, precovenda) values ('000001', 'AREIA', 5.00)
+insert into produtos (codigo, descricao, precovenda) values ('000002', 'PEDRA', 2.00)
+insert into produtos (codigo, descricao, precovenda) values ('000003', 'CIMENTO', 4.00)
+insert into produtos (codigo, descricao, precovenda) values ('000004', 'TIJOLO', 7.00)
+insert into produtos (codigo, descricao, precovenda) values ('000005', 'ARGAMASSA', 8.00)
+insert into produtos (codigo, descricao, precovenda) values ('000006', 'TELHA', 12.00)
+insert into produtos (codigo, descricao, precovenda) values ('000007', 'REJUNTE', 42.00)
+insert into produtos (codigo, descricao, precovenda) values ('000008', 'PISO', 40.00)
+insert into produtos (codigo, descricao, precovenda) values ('000008', 'CADEIRA', 33.00)
+insert into produtos (codigo, descricao, precovenda) values ('000008', 'AZULEJO', 34.00)
+insert into produtos (codigo, descricao, precovenda) values ('000008', 'MANDEIRA', 36.00)
+insert into produtos (codigo, descricao, precovenda) values ('000008', 'ESCADA', 24.00)
+insert into produtos (codigo, descricao, precovenda) values ('000008', 'PINCEL', 23.00)
+insert into produtos (codigo, descricao, precovenda) values ('000008', 'VASSOURA', 22.00)
+insert into produtos (codigo, descricao, precovenda) values ('000008', 'CANETA', 26.00)
+insert into produtos (codigo, descricao, precovenda) values ('000008', 'FERRO', 25.00)
+insert into produtos (codigo, descricao, precovenda) values ('000008', 'SERROTE', 31.00)
+insert into produtos (codigo, descricao, precovenda) values ('000008', 'SERRA', 30.00)
+insert into produtos (codigo, descricao, precovenda) values ('000008', 'FURADEIRA', 20.00)
+insert into produtos (codigo, descricao, precovenda) values ('000008', 'MARTELO', 15.00)
+
