@@ -1,0 +1,32 @@
+object DM: TDM
+  OldCreateOrder = False
+  OnCreate = DataModuleCreate
+  OnDestroy = DataModuleDestroy
+  Height = 92
+  Width = 193
+  object CN: TFDConnection
+    Params.Strings = (
+      'CharacterSet=utf8'
+      'Server=localhost'
+      'Port=0')
+    ResourceOptions.AssignedValues = [rvAutoReconnect]
+    LoginPrompt = False
+    Transaction = TR
+    Left = 8
+    Top = 8
+  end
+  object TR: TFDTransaction
+    Connection = CN
+    Left = 48
+    Top = 8
+  end
+  object WT: TFDGUIxWaitCursor
+    Provider = 'Forms'
+    Left = 88
+    Top = 8
+  end
+  object DL: TFDPhysMySQLDriverLink
+    Left = 128
+    Top = 8
+  end
+end

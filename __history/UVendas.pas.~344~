@@ -1,0 +1,326 @@
+unit UVendas;
+
+interface
+
+uses Vcl.StdCtrls, Vcl.WinXCtrls, Vcl.Buttons, Vcl.Controls, System.Classes,
+  Vcl.ExtCtrls, Vcl.Forms, Vcl.DBCtrls, ClassePedidos, Vcl.Grids,
+  Vcl.DBGrids, Datasnap.DBClient, Winapi.Windows, Data.DB, Provider;
+
+type
+  TFrmVendas = class(TForm)
+    pnDados: TPanel;
+    Label1: TLabel;
+    SBPedido: TSearchBox;
+    LBPedido: TLabel;
+    LBData: TLabel;
+    LBTituloPedido: TLabel;
+    LBTituloData: TLabel;
+    LBTituloCliente: TLabel;
+    LBCliente: TLabel;
+    LBTituloTotal: TLabel;
+    LBTotalPedido: TLabel;
+    GridDados: TDBGrid;
+    pnRodape: TPanel;
+    btnNovoPedido: TSpeedButton;
+    btnGravar: TSpeedButton;
+    btnInsereProduto: TButton;
+    DsItemsPedido: TDataSource;
+    Label3: TLabel;
+    CDSItemsPedido: TClientDataSet;
+    CDSItemsPedidocodigo: TIntegerField;
+    CDSItemsPedidocodprod: TStringField;
+    CDSItemsPedidodescricao: TStringField;
+    CDSItemsPedidoqtd: TIntegerField;
+    CDSItemsPedidovalor: TCurrencyField;
+    CDSItemsPedidototal: TCurrencyField;
+    Label2: TLabel;
+    btnDeletar: TSpeedButton;
+    procedure FormShow(Sender: TObject);
+    procedure SBPedidoInvokeSearch(Sender: TObject);
+    procedure GridDadosKeyDown(Sender: TObject; var Key: Word;
+      Shift: TShiftState);
+    procedure btnInsereProdutoClick(Sender: TObject);
+    procedure btnNovoPedidoClick(Sender: TObject);
+    procedure CDSItemsPedidoCalcFields(DataSet: TDataSet);
+    procedure FormKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
+    procedure btnGravarClick(Sender: TObject);
+    procedure CDSItemsPedidoBeforePost(DataSet: TDataSet);
+    procedure btnDeletarClick(Sender: TObject);
+  private
+    { Private declarations }
+    procedure LabelsInfo(Mostrar : Boolean);
+    procedure LimpaInfo;
+    procedure CalculaTotalPedido;
+  public
+    { Public declarations }
+    Pedidos : TPedidos;
+  end;
+
+var
+  FrmVendas: TFrmVendas;
+
+implementation
+
+uses
+  System.SysUtils, UDM, UPesquisaClientes, UConsultaProdutos, Vcl.Dialogs;
+
+{$R *.dfm}
+
+procedure TFrmVendas.btnDeletarClick(Sender: TObject);
+begin
+  if Application.MessageBox('Deseja realmente excluir o pedido?', 'Módulo Vendas', MB_YESNO + MB_ICONQUESTION) = ID_YES then
+  begin
+    if Pedidos.ApagarPedido(Pedidos.NumeroPedido) then
+      ShowMessage('Pedido excluído!');
+  end;
+end;
+
+procedure TFrmVendas.btnGravarClick(Sender: TObject);
+  Function ValidaTotalProduto : Boolean;
+  var
+    Tot : Double;
+  begin
+    tot := 0;
+    CDSItemsPedido.First;
+    while not CDSItemsPedido.Eof do
+    begin
+      Tot := Tot + CDSItemsPedidototal.AsFloat;
+
+      CDSItemsPedido.Next;
+    end;
+
+    if Tot <> Pedidos.Total then
+      Result := False
+    else
+      Result := True;
+  end;
+
+begin
+  if not ValidaTotalProduto then
+    raise Exception.Create('Utilize o botão F4 para fechar o pedido antes de gravar.');
+
+  if Pedidos.GravarPedido then
+  begin
+    CDSItemsPedido.First;
+    while not CDSItemsPedido.Eof do
+    begin
+      Pedidos.InserirItems(CDSItemsPedidoqtd.AsInteger, CDSItemsPedidovalor.AsCurrency,
+                           CDSItemsPedidototal.AsCurrency, CDSItemsPedidocodprod.AsString);
+
+      CDSItemsPedido.Next;
+    end;
+
+    if Pedidos.NovoRegistro then
+      ShowMessage('Pedido Cadastrado com sucesso!')
+    else
+      ShowMessage('Pedido Atualizado com sucesso!');
+
+    LimpaInfo;
+    LabelsInfo(False);
+    SBPedido.SetFocus;
+  end;
+end;
+
+procedure TFrmVendas.btnInsereProdutoClick(Sender: TObject);
+begin
+  if DsItemsPedido.State in [dsEdit, dsInsert] then
+    CDSItemsPedido.Post;
+end;
+
+procedure TFrmVendas.btnNovoPedidoClick(Sender: TObject);
+begin
+  LimpaInfo;
+
+  try
+    frmPesquisaClientes := TfrmPesquisaClientes.Create(Self);
+    frmPesquisaClientes.ShowModal;
+  finally
+    FreeAndNil(frmPesquisaClientes);
+  end;
+
+  if Pedidos.NomeCli = '' then
+  begin
+    LabelsInfo(False);
+    Exit;
+  end;
+
+  Pedidos.Data := Now;
+  Pedidos.Total := 0;
+  Pedidos.NovoRegistro := True;
+
+  LBCliente.Caption := Pedidos.NomeCli;
+  LBData.Caption := DateToStr(Pedidos.Data);
+  LBTotalPedido.Caption := FloatToStrF(Pedidos.Total, ffCurrency, 10, 2);
+
+  LabelsInfo(True);
+
+  GridDados.SetFocus;
+end;
+
+procedure TFrmVendas.CalculaTotalPedido;
+var
+  Tot : Double;
+begin
+  tot := 0;
+  CDSItemsPedido.First;
+  while not CDSItemsPedido.Eof do
+  begin
+    Tot := Tot + CDSItemsPedidototal.AsFloat;
+
+    CDSItemsPedido.Next;
+  end;
+
+  Pedidos.Total := Tot;
+  LBTotalPedido.Caption := FloatToStrF(Tot, ffCurrency, 10, 2);
+end;
+
+procedure TFrmVendas.CDSItemsPedidoBeforePost(DataSet: TDataSet);
+begin
+  if CDSItemsPedidoqtd.IsNull then
+    raise Exception.Create('Informe a quantidade!');
+
+  if CDSItemsPedidocodprod.IsNull then
+    raise Exception.Create('Informe o produto!');
+
+  if CDSItemsPedidovalor.IsNull then
+    raise Exception.Create('Informe o preço!');
+
+  if CDSItemsPedidodescricao.IsNull then
+    raise Exception.Create('Descrição do produto não pode ficar em branco!');
+end;
+
+procedure TFrmVendas.CDSItemsPedidoCalcFields(DataSet: TDataSet);
+begin
+  CDSItemsPedidototal.AsCurrency := CDSItemsPedidovalor.AsCurrency * CDSItemsPedidoqtd.AsInteger;
+end;
+
+procedure TFrmVendas.FormKeyDown(Sender: TObject; var Key: Word;
+  Shift: TShiftState);
+begin
+  if Key = VK_ESCAPE then
+    Application.Terminate;
+
+  if Key = VK_F4 then
+    CalculaTotalPedido;
+end;
+
+procedure TFrmVendas.FormShow(Sender: TObject);
+begin
+  LabelsInfo(False);
+  Pedidos := TPedidos.Create(Nil);
+  LimpaInfo;
+  GridDados.options:=[dgEditing,dgTitles,dgIndicator,dgColLines,dgRowLines,dgTabs,dgCancelOnExit];
+end;
+
+procedure TFrmVendas.GridDadosKeyDown(Sender: TObject; var Key: Word;
+  Shift: TShiftState);
+begin
+  if Key = VK_RETURN then
+  begin
+    if DsItemsPedido.State = dsBrowse then
+    begin
+      if CDSItemsPedido.IsEmpty then
+      begin
+        CDSItemsPedido.Insert;
+        CDSItemsPedidocodprod.ReadOnly := False;
+        CDSItemsPedidodescricao.ReadOnly := False;
+      end
+      else
+      begin
+        CDSItemsPedido.Edit;
+        CDSItemsPedidocodprod.ReadOnly := True;
+        CDSItemsPedidodescricao.ReadOnly := True;
+      end;
+    end;
+  end;
+
+  if Key = VK_F3 then
+  begin
+    if DsItemsPedido.State in [dsInsert] then
+    begin
+      //pesquisa o produto se encontrar carrega os dados, se nao mostra o form de pesquisa de produtos
+      try
+        frmConsultaProdutos := TfrmConsultaProdutos.Create(Self);
+        frmConsultaProdutos.ShowModal;
+      finally
+        FreeAndNil(frmConsultaProdutos);
+      end;
+    end;
+  end;
+
+  if Key = VK_DELETE then
+  begin
+    if DsItemsPedido.State = dsBrowse then
+    begin
+      if Application.MessageBox('Deseja realmente excluir o produto?', 'Módulo Vendas', MB_YESNO + MB_ICONQUESTION) = ID_YES then
+        CDSItemsPedido.Delete;
+    end;
+  end;
+end;
+
+procedure TFrmVendas.LabelsInfo(Mostrar : Boolean);
+begin
+  GridDados.Enabled := Mostrar;
+  btnInsereProduto.Enabled := Mostrar;
+  btnGravar.Enabled := Mostrar;
+  SBPedido.Enabled := Not Mostrar;
+  btnNovoPedido.Enabled := Not Mostrar;
+
+  LBTituloPedido.Visible := Mostrar;
+  LBPedido.Visible := Mostrar;
+
+  LBTituloData.Visible := Mostrar;
+  LBData.Visible := Mostrar;
+
+  LBTituloCliente.Visible := Mostrar;
+  LBCliente.Visible := Mostrar;
+
+  LBTituloTotal.Visible := Mostrar;
+  LBTotalPedido.Visible := Mostrar;
+end;
+
+procedure TFrmVendas.LimpaInfo;
+begin
+  //limpa tela
+  SBPedido.Clear;
+  LBPedido.Caption := '';
+  LBData.Caption := '';
+  LBCliente.Caption := '';
+  LBTotalPedido.Caption := '';
+
+  //limpa objeto
+  Pedidos.NumeroPedido := 0;
+  Pedidos.Data := 0;
+  Pedidos.CodCli := 0;
+  Pedidos.Total := 0;
+  Pedidos.NomeCli := '';
+
+  CDSItemsPedido.Close;
+  CDSItemsPedido.Open;
+  CDSItemsPedido.EmptyDataSet;
+  CDSItemsPedidocodprod.ReadOnly := False;
+  CDSItemsPedidodescricao.ReadOnly := False;
+end;
+
+procedure TFrmVendas.SBPedidoInvokeSearch(Sender: TObject);
+begin
+  if SBPedido.Text = '' then
+    Exit;
+
+  if Pedidos.PesquisarPedido(StrToInt(SBPedido.Text), CDSItemsPedido) then
+  begin
+    LBPedido.Caption :=  IntToStr(Pedidos.NumeroPedido);
+    LBCliente.Caption := Pedidos.NomeCli;
+    LBTotalPedido.Caption := FloatToStrF(Pedidos.Total, ffCurrency, 10, 2);
+    LBData.Caption := DateToStr(Pedidos.Data);
+    LabelsInfo(True);
+    GridDados.SetFocus;
+  end
+  else
+  begin
+    SBPedido.Clear;
+    LimpaInfo;
+  end;
+end;
+
+end.

@@ -1,0 +1,43 @@
+object DM: TDM
+  OldCreateOrder = False
+  OnCreate = DataModuleCreate
+  OnDestroy = DataModuleDestroy
+  Height = 255
+  Width = 521
+  object CN: TFDConnection
+    Params.Strings = (
+      'CharacterSet=utf8'
+      'Server=localhost'
+      'Port=0')
+    ResourceOptions.AssignedValues = [rvAutoReconnect]
+    LoginPrompt = False
+    Transaction = TR
+    Left = 8
+    Top = 8
+  end
+  object TR: TFDTransaction
+    Connection = CN
+    Left = 48
+    Top = 8
+  end
+  object WT: TFDGUIxWaitCursor
+    Provider = 'Forms'
+    Left = 88
+    Top = 8
+  end
+  object PEDIDOS: TFDTable
+    Connection = CN
+    Transaction = TR
+    Left = 472
+    Top = 8
+  end
+  object DL: TFDPhysMySQLDriverLink
+    Left = 128
+    Top = 8
+  end
+  object DSPEDIDOS: TDataSource
+    DataSet = PEDIDOS
+    Left = 472
+    Top = 56
+  end
+end

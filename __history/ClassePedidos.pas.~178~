@@ -1,0 +1,265 @@
+unit ClassePedidos;
+
+interface
+
+uses
+  FireDAC.Comp.Client, FireDAC.Stan.Param, Data.DB, Datasnap.DBClient;
+
+type
+  TPedidos = class
+    private
+      FCodCli : Integer;
+      FTotal : Double;
+      FNumeroPedido : Integer;
+      FData : TDateTime;
+      FPedidos : TPedidos;
+      FNovoRegistro : Boolean;
+      QrUtil : TFDQuery;
+      QrUtil2 : TFDQuery;
+      FNomeCli: String;
+
+    public
+      constructor Create(Pedidos : TPedidos);
+      destructor Destroy; Override;
+
+      function GravarPedido : Boolean;
+      function PesquisarPedido(NumPed : Integer; CDSItems : TClientDataSet) : Boolean;
+      function InserirItems(Qtd : Integer; Preco, Total : Double; CodProd : String) : Boolean;
+      function ApagarPedido(NumPed : Integer) : Boolean;
+      procedure ValidaPedido;
+
+      property Pedidos : TPedidos Read FPedidos Write FPedidos;
+      property NumeroPedido : Integer Read FNumeroPedido Write FNumeroPedido;
+      property Data : TDateTime Read FData Write FData;
+      property CodCli : Integer Read FCodCli Write FCodCli;
+      property NomeCli : String Read FNomeCli Write FNomeCli;
+      property Total : Double Read FTotal Write FTotal;
+      property NovoRegistro : Boolean Read FNovoRegistro Write FNovoRegistro;
+  end;
+
+implementation
+
+uses
+  UDM, System.SysUtils;
+
+{ TPedidos }
+
+function TPedidos.ApagarPedido(NumPed: Integer): Boolean;
+begin
+  QrUtil := TFDQuery.Create(Nil);
+  QrUtil.Connection := DM.CN;
+
+  try
+    QrUtil.Close;
+    QrUtil.SQL.Clear;
+    QrUtil.SQL.Add('DELETE FROM PEDIDOS WHERE NUMEROPEDIDO =:NUMPED');
+    QrUtil.ParamByName('NUMPED').AsInteger := FNumeroPedido;
+    QrUtil.ExecSQL;
+
+    QrUtil.Free;
+    DM.TR.Commit;
+  except
+    QrUtil.Free;
+    DM.TR.Rollback;
+    raise Exception.Create('Erro ao apagar os itens pedido!');
+  end;
+
+  try
+    QrUtil.Close;
+    QrUtil.SQL.Clear;
+    QrUtil.SQL.Add('DELETE FROM PEDIDOSPRODUTOS WHERE PEDIDO =:NUMPED');
+    QrUtil.ParamByName('NUMPED').AsInteger := FNumeroPedido;
+    QrUtil.ExecSQL;
+
+    QrUtil.Free;
+    DM.TR.Commit;
+  except
+    QrUtil.Free;
+    DM.TR.Rollback;
+    raise Exception.Create('Erro ao apagar os itens pedido!');
+  end;
+end;
+
+constructor TPedidos.Create(Pedidos: TPedidos);
+begin
+  FPedidos := Pedidos;
+end;
+
+destructor TPedidos.Destroy;
+begin
+  FPedidos.Free;
+end;
+
+function TPedidos.GravarPedido: Boolean;
+begin
+  ValidaPedido;
+
+  QrUtil := TFDQuery.Create(Nil);
+  QrUtil.Connection := DM.CN;
+
+  if FNovoRegistro then
+  begin
+    QrUtil.Close;
+    QrUtil.SQL.Clear;
+    QrUtil.SQL.Add('SELECT MAX(NUMEROPEDIDO)+1 AS ULTPED FROM PEDIDOS');
+    QrUtil.Open;
+
+
+    if QrUtil.FieldByName('ULTPED').AsInteger = 0 then
+      FNumeroPedido := 1
+    else
+      FNumeroPedido := QrUtil.FieldByName('ULTPED').AsInteger;
+  end;
+
+  try
+    DM.TR.StartTransaction;
+
+    if FNovoRegistro then
+    begin
+      QrUtil.Close;
+      QrUtil.SQL.Clear;
+      QrUtil.SQL.Add('INSERT INTO PEDIDOS (NUMEROPEDIDO, DATAEMISSAO, CODCLI, VALORTOTAL) VALUES (:NUMPED, :DTEMI, :CODCLI, :VALTOT)');
+      QrUtil.ParamByName('NUMPED').AsInteger := FNumeroPedido;
+      QrUtil.ParamByName('DTEMI').AsDateTime := FData;
+      QrUtil.ParamByName('CODCLI').AsInteger := FCodCli;
+      QrUtil.ParamByName('VALTOT').AsCurrency := FTotal;
+      QrUtil.ExecSQL;
+    end
+    else
+    begin
+      QrUtil.Close;
+      QrUtil.SQL.Clear;
+      QrUtil.SQL.Add('UPDATE PEDIDOS SET VALORTOTAL =:VALTOT WHERE NUMEROPEDIDO =:NUMPED');
+      QrUtil.ParamByName('NUMPED').AsInteger := FNumeroPedido;
+      QrUtil.ParamByName('VALTOT').AsCurrency := FTotal;
+      QrUtil.ExecSQL;
+    end;
+
+    DM.TR.Commit;
+    QrUtil.Free;
+    Result := True;
+  except
+    DM.TR.Rollback;
+    QrUtil.Free;
+    Result := False;
+    raise Exception.Create('Erro ao gravar os dados do pedido!');
+  end;
+end;
+
+function TPedidos.InserirItems(Qtd: Integer; Preco, Total: Double;
+  CodProd: String): Boolean;
+begin
+  QrUtil := TFDQuery.Create(Nil);
+  QrUtil.Connection := DM.CN;
+
+  try
+    DM.TR.StartTransaction;
+
+    QrUtil.Close;
+    QrUtil.SQL.Clear;
+    QrUtil.SQL.Add('INSERT INTO PEDIDOSPRODUTOS (PEDIDO, CODPROD, QTD, VALOR, VALORTOTAL) VALUES (:NUMPED, :CODPROD, :QTD, :VALOR, :TOTAL)');
+    QrUtil.ParamByName('NUMPED').AsInteger := FNumeroPedido;
+    QrUtil.ParamByName('CODPROD').AsString := CodProd;
+    QrUtil.ParamByName('QTD').AsInteger := Qtd;
+    QrUtil.ParamByName('VALOR').AsCurrency := Preco;
+    QrUtil.ParamByName('TOTAL').AsCurrency := Total;
+    QrUtil.ExecSQL;
+
+    DM.TR.Commit;
+    QrUtil.Free;
+    Result := True;
+  except
+    DM.TR.Rollback;
+    QrUtil.Free;
+    Result := False;
+    raise Exception.Create('Erro ao gravar os items do pedido!');
+  end;
+end;
+
+function TPedidos.PesquisarPedido(NumPed : Integer; CDSItems : TClientDataSet): Boolean;
+begin
+  QrUtil := TFDQuery.Create(Nil);
+  QrUtil.Connection := DM.CN;
+
+  QrUtil.Close;
+  QrUtil.SQL.Clear;
+  QrUtil.SQL.Add('SELECT NUMEROPEDIDO, DATAEMISSAO, CODCLI, VALORTOTAL FROM PEDIDOS WHERE NUMEROPEDIDO =:NUMPED');
+  QrUtil.ParamByName('NUMPED').AsInteger := NumPed;
+  QrUtil.Open;
+
+  if not QrUtil.IsEmpty then
+  begin
+    FNovoRegistro := False;
+    FNumeroPedido := QrUtil.FieldByName('NUMEROPEDIDO').AsInteger;
+    FData := QrUtil.FieldByName('DATAEMISSAO').AsDateTime;
+    FCodCli := QrUtil.FieldByName('CODCLI').AsInteger;
+    FTotal := QrUtil.FieldByName('VALORTOTAL').AsFloat;
+
+    QrUtil.Close;
+    QrUtil.SQL.Clear;
+    QrUtil.SQL.Add('SELECT NOME FROM CLIENTES WHERE CODIGO =:CODCLI');
+    QrUtil.ParamByName('CODCLI').AsInteger := FCodCli;
+    QrUtil.Open;
+
+    FNomeCli := QrUtil.FieldByName('NOME').AsString;
+
+    QrUtil.Close;
+    QrUtil.SQL.Clear;
+    QrUtil.SQL.Add('SELECT PEDIDO, CODPROD, QTD, VALOR, VALORTOTAL FROM PEDIDOSPRODUTOS WHERE PEDIDO =:NUMPED');
+    QrUtil.ParamByName('NUMPED').AsInteger := NumPed;
+    QrUtil.Open;
+
+    QrUtil2 := TFDQuery.Create(Nil);
+    QrUtil2.Connection := DM.CN;
+
+    while not QrUtil.Eof do
+    begin
+      CDSItems.Append;
+      CDSItems.FieldByName('codprod').AsString := QrUtil.FieldByName('codprod').AsString;
+
+      QrUtil2.Close;
+      QrUtil2.SQL.Clear;
+      QrUtil2.SQL.Add('SELECT DESCRICAO FROM PRODUTOS WHERE CODIGO =:CODPRD');
+      QrUtil2.ParamByName('CODPRD').AsString := QrUtil.FieldByName('codprod').AsString;
+      QrUtil2.Open;
+
+      if not QrUtil2.IsEmpty then
+        CDSItems.FieldByName('descricao').AsString := QrUtil2.FieldByName('DESCRICAO').AsString;
+
+      CDSItems.FieldByName('qtd').AsString := QrUtil.FieldByName('qtd').AsString;
+      CDSItems.FieldByName('valor').AsString := QrUtil.FieldByName('valor').AsString;
+      CDSItems.FieldByName('total').AsString := QrUtil.FieldByName('valortotal').AsString;
+      CDSItems.Post;
+
+      QrUtil.Next;
+    end;
+
+    QrUtil.Close;
+    QrUtil.Free;
+
+    QrUtil2.Close;
+    QrUtil2.Free;
+
+    Result := True;
+  end
+  else
+  begin
+    QrUtil.Close;
+    QrUtil.Free;
+    Result := False;
+  end;
+end;
+
+procedure TPedidos.ValidaPedido;
+begin
+  if FCodCli = 0 Then
+    raise Exception.Create('Cliente não pode ficar em branco!');
+
+  if FTotal = 0 Then
+    raise Exception.Create('Campo Total não preenchido!');
+
+  if FData = 0 then
+    raise Exception.Create('Campo Data não preenchido!');
+end;
+
+end.

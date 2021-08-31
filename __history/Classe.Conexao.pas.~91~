@@ -1,0 +1,111 @@
+unit Classe.Conexao;
+
+interface
+
+uses
+  FireDAC.Comp.Client;
+
+type
+  TConexao = class
+    private
+      FServidor: String;
+      FMsgErro: String;
+      FSenha: String;
+      FLogin: String;
+      FPorta: String;
+      FConexao: TFDConnection;
+      FDatabase: String;
+    public
+      constructor Create(NomeConexao : TFDConnection);
+      destructor Destroy; Override;
+
+      function ConectarBanco : Boolean;
+      function LerArquivoIni : Boolean;
+
+      property Conexao : TFDConnection Read FConexao Write FConexao;
+      property Servidor : String Read FServidor Write FServidor;
+      property Login : String Read FLogin Write FLogin;
+      property Senha : String Read FSenha Write FSenha;
+      property Porta : String Read FPorta Write FPorta;
+      property Database : String Read FDatabase Write FDatabase;
+      property MsgErro : String Read FMsgErro Write FMsgErro;
+  end;
+
+implementation
+
+uses
+  System.SysUtils, System.IniFiles, Vcl.Forms;
+
+{ TConexao }
+
+function TConexao.ConectarBanco: Boolean;
+begin
+  {CN.ConnectionDefName := 'vendas';
+  CN.DriverName := 'MySQL';
+  CN.Params.UserName := 'root';
+  CN.Params.Password := '123456';
+  CN.Params.DriverID := 'MySQL';
+  CN.Connected := True;}
+
+  if not LerArquivoIni then
+    raise Exception.Create('Não foi possível ler o arquivo de configuração do sistema!'+#13+'Aplicação finalizada.');
+
+  FConexao.DriverName := 'MySQL';
+  FConexao.Params.DriverID := 'MySQL';
+  FConexao.ConnectionDefName := FDatabase;
+  FConexao.Params.UserName := FLogin;
+  FConexao.Params.Password := '123456';
+    
+  {FConexao.Params.Add('Server='+FServidor);
+  FConexao.Params.Add('UserName='+FLogin);
+  FConexao.Params.Add('Password='+FSenha);
+  FConexao.Params.Add('Port='+FPorta);
+  FConexao.Params.Add('Database='+FDatabase);}  
+
+  try
+    FConexao.Connected := True;
+    Result := True;
+  except
+    on e:Exception do
+    begin
+      FMsgErro := e.Message;
+      Result := False;
+    end;
+  end;
+end;
+
+constructor TConexao.Create(NomeConexao: TFDConnection);
+begin
+  FConexao := NomeConexao;
+end;
+
+destructor TConexao.Destroy;
+begin
+  FConexao.Connected := False;
+
+  inherited;
+end;
+
+function TConexao.LerArquivoIni: Boolean;
+var
+  Ini : TIniFile;
+begin
+  if not fileExists(ExtractFilePath(Application.ExeName)+'CONFIG.INI') then
+    Result := False
+  else
+  begin
+    try
+      Ini := TIniFile.Create(ExtractFilePath(Application.ExeName)+'CONFIG.INI');
+      FServidor := Ini.ReadString('CONFIG', 'server', '');
+      FLogin := Ini.ReadString('CONFIG', 'username', '');
+      FSenha := Ini.ReadString('CONFIG', 'password', '');
+      FPorta := Ini.ReadString('CONFIG', 'port', '');
+      FDatabase := Ini.ReadString('CONFIG', 'database', '');
+    finally
+      FreeAndNil(Ini);
+      Result := True;
+    end;
+  end;
+end;
+
+end.

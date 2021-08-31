@@ -1,0 +1,128 @@
+unit UPesquisaClientes;
+
+interface
+
+uses
+  Winapi.Windows, Winapi.Messages, System.SysUtils, System.Variants, System.Classes, Vcl.Graphics,
+  Vcl.Controls, Vcl.Forms, Vcl.Dialogs, Vcl.ExtCtrls, Data.DB, Vcl.Grids,
+  Vcl.DBGrids, Vcl.StdCtrls, Vcl.WinXCtrls, FireDAC.Stan.Intf,
+  FireDAC.Stan.Option, FireDAC.Stan.Param, FireDAC.Stan.Error, FireDAC.DatS,
+  FireDAC.Phys.Intf, FireDAC.DApt.Intf, FireDAC.Stan.Async, FireDAC.DApt,
+  FireDAC.Comp.DataSet, FireDAC.Comp.Client;
+
+type
+  TfrmPesquisaClientes = class(TForm)
+    pnDados: TPanel;
+    pnRodape: TPanel;
+    gridPesquisa: TDBGrid;
+    Label1: TLabel;
+    Label2: TLabel;
+    Label3: TLabel;
+    SBPesqNome: TSearchBox;
+    SBPesqCidade: TSearchBox;
+    SBPesqUF: TSearchBox;
+    btnPesquisar: TButton;
+    FDQPesquisa: TFDQuery;
+    DsPesquisa: TDataSource;
+    procedure SBPesqNomeInvokeSearch(Sender: TObject);
+    procedure btnPesquisarClick(Sender: TObject);
+    procedure DBGrid1KeyDown(Sender: TObject; var Key: Word;
+      Shift: TShiftState);
+    procedure FormShow(Sender: TObject);
+    procedure gridPesquisaKeyDown(Sender: TObject; var Key: Word;
+      Shift: TShiftState);
+  private
+    { Private declarations }
+  public
+    { Public declarations }
+  end;
+
+var
+  frmPesquisaClientes: TfrmPesquisaClientes;
+
+implementation
+
+{$R *.dfm}
+
+uses UDM, UVendas;
+
+procedure TfrmPesquisaClientes.btnPesquisarClick(Sender: TObject);
+begin
+  if FDQPesquisa.IsEmpty then
+    Exit;
+
+  FrmVendas.Pedidos.CodCli := FDQPesquisa.FieldByName('CODIGO').AsInteger;
+  FrmVendas.Pedidos.NomeCli := FDQPesquisa.FieldByName('NOME').AsString;
+
+  Close;
+end;
+
+procedure TfrmPesquisaClientes.DBGrid1KeyDown(Sender: TObject; var Key: Word;
+  Shift: TShiftState);
+begin
+  if Key = VK_RETURN then
+    if FDQPesquisa.RecordCount > 0 then
+      btnPesquisarClick(Self);
+end;
+
+procedure TfrmPesquisaClientes.FormShow(Sender: TObject);
+begin
+  SBPesqNome.SetFocus;
+end;
+
+procedure TfrmPesquisaClientes.gridPesquisaKeyDown(Sender: TObject;
+  var Key: Word; Shift: TShiftState);
+begin
+  if Key = VK_RETURN then
+    if FDQPesquisa.IsEmpty then
+      Exit
+    else
+      btnPesquisarClick(Self);
+end;
+
+procedure TfrmPesquisaClientes.SBPesqNomeInvokeSearch(Sender: TObject);
+var
+  sql : string;
+begin
+  FDQPesquisa.Close;
+  FDQPesquisa.SQL.Clear;
+  FDQPesquisa.SQL.Add('SELECT CODIGO, NOME, CIDADE, UF FROM CLIENTES');
+
+  sql := '';
+  if SBPesqNome.Text <> '' then
+  begin
+    if sql = '' then
+      sql := ' WHERE NOME LIKE '+QuotedStr('%'+SBPesqNome.Text+'%');
+
+    FDQPesquisa.SQL.Add(sql);
+  end;
+
+
+  if SBPesqCidade.Text <> '' then
+  begin
+    if sql = '' then
+      sql := ' WHERE CIDADE LIKE '+QuotedStr('%'+SBPesqCidade.Text+'%')
+    else
+      sql := ' AND CIDADE LIKE '+QuotedStr('%'+SBPesqCidade.Text+'%');
+
+    FDQPesquisa.SQL.Add(sql);
+  end;
+
+
+  if SBPesqUF.Text <> '' then
+  begin
+    if sql = '' then
+      sql := ' WHERE UF LIKE '+QuotedStr('%'+SBPesqUF.Text+'%')
+    else
+      sql := ' AND UF LIKE '+QuotedStr('%'+SBPesqUF.Text+'%');
+
+    FDQPesquisa.SQL.Add(sql);
+  end;
+
+  FDQPesquisa.SQL.Add(' ORDER BY NOME');
+  FDQPesquisa.Open;
+
+   gridPesquisa.SetFocus;
+end;
+
+end.
